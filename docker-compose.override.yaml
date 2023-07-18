@@ -1,0 +1,52 @@
+# override represents the development settings
+---
+version: '3.8'
+x-airflow-common:
+  &airflow-common
+  # build: .
+  environment:
+    &airflow-common-env
+    AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
+    AIRFLOW__SCHEDULER__CATCHUP_BY_DEFAULT: 'false'
+    AIRFLOW__CORE__MAX_ACTIVE_RUNS_PER_DAG: 4
+    # timezone settings
+    AIRFLOW__WEBSERVER__DEFAULT_UI_TIMEZONE: 'Asia/Taipei'
+    AIRFLOW__CORE__DEFAULT_TIMEZONE: 'Asia/Taipei'
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./logs:/opt/airflow/logs
+    - ./configs:/opt/airflow/config
+    - ./plugins:/opt/airflow/plugins
+
+services:
+  postgres:
+    ports:
+      - "5432:5432"
+  airflow-webserver:
+    <<: *airflow-common
+
+  airflow-scheduler:
+    <<: *airflow-common
+
+  airflow-worker:
+    <<: *airflow-common
+    environment:
+      <<: *airflow-common-env
+
+  airflow-triggerer:
+    <<: *airflow-common
+
+  airflow-init:
+    <<: *airflow-common
+    environment:
+      <<: *airflow-common-env
+      _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
+      _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
+
+  airflow-cli:
+    <<: *airflow-common
+    environment:
+      <<: *airflow-common-env
+
+  flower:
+    <<: *airflow-common

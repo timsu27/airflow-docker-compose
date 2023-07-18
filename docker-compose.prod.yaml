@@ -1,0 +1,82 @@
+---
+version: '3.8'
+x-airflow-common:
+  &airflow-common
+  # build: .
+  environment:
+    &airflow-common-env
+    # choose the sub path of volume airflow-repo
+    AIRFLOW__CORE__DAGS_FOLDER: /tmp/git/airflow_repo/dags
+    AIRFLOW__SCHEDULER__CATCHUP_BY_DEFAULT: 'true'
+    AIRFLOW__CORE__MAX_ACTIVE_RUNS_PER_DAG: 4
+  depends_on:
+    &airflow-common-depends-on
+    gitsync:
+      condition: service_started
+  volumes:
+    - airflow-repo:/tmp
+
+services:
+  airflow-webserver:
+    <<: *airflow-common
+    depends_on:
+      <<: *airflow-common-depends-on
+
+  airflow-scheduler:
+    <<: *airflow-common
+    depends_on:
+      <<: *airflow-common-depends-on
+
+  airflow-worker:
+    <<: *airflow-common
+    environment:
+      <<: *airflow-common-env
+    depends_on:
+      <<: *airflow-common-depends-on
+
+  airflow-triggerer:
+    <<: *airflow-common
+    depends_on:
+      <<: *airflow-common-depends-on
+
+  airflow-init:
+    <<: *airflow-common
+    environment:
+      <<: *airflow-common-env
+      _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME}
+      _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD}
+
+  airflow-cli:
+    <<: *airflow-common
+    environment:
+      <<: *airflow-common-env
+
+  flower:
+    <<: *airflow-common
+    depends_on:
+      <<: *airflow-common-depends-on
+
+  gitsync:
+    container_name: git-sync
+    image: registry.k8s.io/git-sync/git-sync:v3.6.8
+    environment:
+      - GIT_SYNC_REPO=https://github.com/timsu27/airflow-docker-compose.git
+      - GIT_SYNC_BRANCH=main
+      - GIT_SYNC_REV=HEAD
+      - GIT_SYNC_ROOT=/tmp/git
+      - GIT_SYNC_DEST=airflow_repo
+      - GIT_SYNC_DEPTH=1
+      - GIT_SYNC_MAX_FAILURES=0
+      - GIT_SYNC_WAIT=10
+      - GIT_SYNC_ADD_USER=true
+      - GIT_SYNC_USERNAME=${GIT_USERNAME}
+      - GIT_SYNC_PASSWORD=${GIT_SECRET}
+    volumes:
+      - airflow-repo:/tmp:rw
+    depends_on:
+      <<: *airflow-common-depends-on
+    env_file:
+      - .env
+
+volumes:
+  airflow-repo: {}
